@@ -1,0 +1,4 @@
+- get more accurate training data
+- determine cutoff from training file size
+- make initial trie generation faster
+
