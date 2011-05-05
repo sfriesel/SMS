@@ -2,6 +2,8 @@ package sms.codec;
 
 import sms.model.*;
 import java.io.*;
+import java.util.zip.*;
+import java.util.Enumeration;
 
 public class TrieLoader {
 	static String trieExtension = ".trie";
@@ -15,32 +17,31 @@ public class TrieLoader {
 		this.basepath = basepath;
 	}
 	
-	protected void createTrieFile() throws IOException {
-		FileInputStream training = new FileInputStream(basepath + trainingExtension);
-		Trie<Character, Dictionary> temp = new sms.builder.TrieBuilder().build(training, cutoff);
-		
-		FileOutputStream fos = new FileOutputStream(basepath + trieExtension);
-		ObjectOutputStream oos = new ObjectOutputStream(fos);
-		
-		oos.writeObject(temp);
-	}
-	
 	public Trie<Character, Dictionary> loadTrie() throws IOException {
-		FileInputStream trieFile;
-		while(true) {
-			try {
-				//try to load the serialized trie
+		InputStream trieFile;
+		try { //loading trie from file
+			try { //to load the serialized trie
 				trieFile = new FileInputStream(basepath + trieExtension);
-				
-				ObjectInputStream ois = new ObjectInputStream(trieFile);
-				
-				return (Trie<Character, Dictionary>) (ois.readObject());
-			} catch(Exception e) {
-				System.err.println("trie needs to be rebuild...");
-				createTrieFile();
-				continue;
+			} catch(Exception exception) {
+				//see if we can load the zipped version instead
+				ZipFile zipfile = new ZipFile(basepath + trieExtension + ".zip");
+				ZipEntry entry = zipfile.entries().nextElement();
+				trieFile = zipfile.getInputStream(entry);
 			}
+			
+			ObjectInputStream ois = new ObjectInputStream(trieFile);
+			
+			return (Trie<Character, Dictionary>) (ois.readObject());
+		} catch(Exception e) {
+			System.err.println("trie needs to be rebuild... this may take a while");
+			FileInputStream training = new FileInputStream(basepath + trainingExtension);
+			Trie<Character, Dictionary> temp = new sms.builder.TrieBuilder().build(training, cutoff);
+			
+			FileOutputStream fos = new FileOutputStream(basepath + trieExtension);
+			ObjectOutputStream oos = new ObjectOutputStream(fos);
+			
+			oos.writeObject(temp);
+			return temp;
 		}
-		
 	}
 }
